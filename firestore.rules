@@ -1,0 +1,250 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Safety Net (Default-Deny Catch-All)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'pedrinho.pedro248@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Validation Blueprints (Pillar 2)
+    function isValidAdminRecord(data) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'createdAt']) &&
+        isValidId(data.uid) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 120 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'name', 'email', 'role', 'plan', 'blocked', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'name', 'email', 'role', 'plan', 'blocked', 'createdAt', 'updatedAt']) &&
+        isValidId(data.uid) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 120 &&
+        data.role is string && data.role.size() <= 20 && (data.role == 'student' || data.role == 'admin') &&
+        data.plan is string && data.plan.size() <= 20 && (data.plan == 'ESENCIAL' || data.plan == 'COMPLETO' || data.plan == 'VIP') &&
+        data.blocked is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidModule(data) {
+      return data.keys().hasAll(['id', 'code', 'title', 'description', 'coverTheme', 'order', 'visibility', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'code', 'title', 'description', 'coverTheme', 'order', 'visibility', 'createdAt', 'updatedAt']) &&
+        isValidId(data.id) &&
+        data.code is string && data.code.size() >= 1 && data.code.size() <= 10 &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 500 &&
+        data.coverTheme is string && data.coverTheme.size() >= 1 && data.coverTheme.size() <= 40 &&
+        data.order is int && data.order >= 1 && data.order <= 1000 &&
+        data.visibility is string && data.visibility.size() <= 20 && data.visibility == 'published' &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidVideo(data) {
+      return data.keys().hasAll(['id', 'moduleId', 'title', 'description', 'duration', 'driveLink', 'driveFileId', 'order', 'embedAllowed', 'visibility', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'moduleId', 'title', 'description', 'duration', 'driveLink', 'driveFileId', 'order', 'embedAllowed', 'visibility', 'createdAt', 'updatedAt']) &&
+        isValidId(data.id) &&
+        isValidId(data.moduleId) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+        data.description is string && data.description.size() >= 0 && data.description.size() <= 800 &&
+        data.duration is string && data.duration.size() >= 1 && data.duration.size() <= 20 &&
+        data.driveLink is string && data.driveLink.size() >= 1 && data.driveLink.size() <= 500 &&
+        isValidId(data.driveFileId) &&
+        data.order is int && data.order >= 1 && data.order <= 5000 &&
+        data.embedAllowed is bool &&
+        data.visibility is string && data.visibility.size() <= 20 && data.visibility == 'published' &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidBonus(data) {
+      return data.keys().hasAll(['id', 'code', 'title', 'description', 'allowedPlans', 'visibility', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'code', 'title', 'description', 'allowedPlans', 'visibility', 'createdAt', 'updatedAt']) &&
+        isValidId(data.id) &&
+        data.code is string && data.code.size() >= 1 && data.code.size() <= 20 &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 600 &&
+        data.allowedPlans is list && data.allowedPlans.size() >= 1 && data.allowedPlans.size() <= 3 &&
+        data.allowedPlans[0] is string && data.allowedPlans[0].size() <= 20 &&
+        data.visibility is string && data.visibility.size() <= 20 && data.visibility == 'published' &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidProgress(data) {
+      return data.keys().hasAll(['userId', 'completedVideoIds', 'favoriteVideoIds', 'lastWatchedVideoId', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['userId', 'completedVideoIds', 'favoriteVideoIds', 'lastWatchedVideoId', 'createdAt', 'updatedAt']) &&
+        isValidId(data.userId) &&
+        data.completedVideoIds is list && data.completedVideoIds.size() <= 500 &&
+        (data.completedVideoIds.size() == 0 || (data.completedVideoIds[0] is string && data.completedVideoIds[0].size() <= 128)) &&
+        data.favoriteVideoIds is list && data.favoriteVideoIds.size() <= 500 &&
+        (data.favoriteVideoIds.size() == 0 || (data.favoriteVideoIds[0] is string && data.favoriteVideoIds[0].size() <= 128)) &&
+        data.lastWatchedVideoId is string && data.lastWatchedVideoId.size() <= 128 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidLiveClass(data) {
+      return data.keys().hasAll(['id', 'title', 'date', 'time', 'instructor', 'streamUrl', 'visibility', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'title', 'date', 'time', 'instructor', 'streamUrl', 'visibility', 'createdAt', 'updatedAt']) &&
+        isValidId(data.id) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
+        data.date is string && data.date.size() >= 1 && data.date.size() <= 30 &&
+        data.time is string && data.time.size() >= 1 && data.time.size() <= 20 &&
+        data.instructor is string && data.instructor.size() >= 1 && data.instructor.size() <= 100 &&
+        data.streamUrl is string && data.streamUrl.size() >= 1 && data.streamUrl.size() <= 500 &&
+        data.visibility is string && data.visibility.size() <= 20 && data.visibility == 'vip' &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // 1. Admins Registry
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && (request.auth.uid == adminId || isAdmin());
+      allow list: if isSignedIn() && existing().uid == request.auth.uid;
+      allow create: if isAdmin() && isValidId(adminId) && isValidAdminRecord(incoming()) && incoming().uid == adminId && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(adminId);
+    }
+
+    // 2. Users Collection (PII Isolated to Owner or Admin)
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+      allow create: if isVerified() && isValidId(userId) && isValidUserProfile(incoming()) &&
+        incoming().uid == userId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (
+          (request.auth.uid == userId && incoming().role == 'student' && incoming().plan == 'ESENCIAL' && incoming().blocked == false) ||
+          isAdmin()
+        );
+      allow update: if isVerified() && isValidId(userId) && isValidUserProfile(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'updatedAt'])) ||
+          isAdmin()
+        );
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    // 3. Modules Collection
+    match /modules/{moduleId} {
+      allow get: if isSignedIn() && isValidId(moduleId) && existing().visibility == 'published';
+      allow list: if isSignedIn() && existing().visibility == 'published';
+      allow create: if isAdmin() && isValidId(moduleId) && isValidModule(incoming()) &&
+        incoming().id == moduleId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(moduleId) && isValidModule(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['code', 'title', 'description', 'coverTheme', 'order', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(moduleId);
+    }
+
+    // 4. Videos Collection
+    match /videos/{videoId} {
+      allow get: if isSignedIn() && isValidId(videoId) && existing().visibility == 'published';
+      allow list: if isSignedIn() && existing().visibility == 'published';
+      allow create: if isAdmin() && isValidId(videoId) && isValidVideo(incoming()) &&
+        incoming().id == videoId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/modules/$(incoming().moduleId));
+      allow update: if isAdmin() && isValidId(videoId) && isValidVideo(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['moduleId', 'title', 'description', 'duration', 'driveLink', 'driveFileId', 'order', 'embedAllowed', 'updatedAt']) &&
+        exists(/databases/$(database)/documents/modules/$(incoming().moduleId));
+      allow delete: if isAdmin() && isValidId(videoId);
+    }
+
+    // 5. Bonuses Collection
+    match /bonuses/{bonusId} {
+      allow get: if isSignedIn() && isValidId(bonusId) && existing().visibility == 'published';
+      allow list: if isSignedIn() && existing().visibility == 'published';
+      allow create: if isAdmin() && isValidId(bonusId) && isValidBonus(incoming()) &&
+        incoming().id == bonusId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(bonusId) && isValidBonus(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['code', 'title', 'description', 'allowedPlans', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(bonusId);
+    }
+
+    // 6. Progress Collection
+    match /progress/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow create: if isVerified() && isValidId(userId) && isValidProgress(incoming()) &&
+        incoming().userId == userId &&
+        (request.auth.uid == userId || isAdmin()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerified() && isValidId(userId) && isValidProgress(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['completedVideoIds', 'favoriteVideoIds', 'lastWatchedVideoId', 'updatedAt'])) ||
+          isAdmin()
+        );
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    // 7. Live Classes Collection (VIP)
+    match /liveClasses/{classId} {
+      allow get: if isSignedIn() && isValidId(classId) && existing().visibility == 'vip';
+      allow list: if isSignedIn() && existing().visibility == 'vip';
+      allow create: if isAdmin() && isValidId(classId) && isValidLiveClass(incoming()) &&
+        incoming().id == classId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(classId) && isValidLiveClass(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'date', 'time', 'instructor', 'streamUrl', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(classId);
+    }
+  }
+}

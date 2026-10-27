@@ -1,0 +1,6 @@
+{
+  "name": "THAI ELITE MÉXICO",
+  "description": "Plataforma de miembros y entrenamiento de Muay Thai con 500 entrenamientos en video, módulos estructurados, bonos descargables y seguimiento de progreso.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

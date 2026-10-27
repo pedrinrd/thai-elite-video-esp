@@ -1,0 +1,357 @@
+{
+  "entities": {
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted administrator membership document keyed by Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the administrator",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified administrator email",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of admin assignment"
+        }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Student or administrator profile containing plan tier and access status.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Owner Firebase UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the student or admin",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email address (PII restricted to owner or admin)",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "enum": ["student", "admin"],
+          "description": "Role within THAI ELITE MEXICO"
+        },
+        "plan": {
+          "type": "string",
+          "enum": ["ESENCIAL", "COMPLETO", "VIP"],
+          "description": "Assigned training membership plan"
+        },
+        "blocked": {
+          "type": "boolean",
+          "description": "Whether access is suspended by an administrator"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Account creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last profile update timestamp"
+        }
+      },
+      "required": ["uid", "name", "email", "role", "plan", "blocked", "createdAt", "updatedAt"]
+    },
+    "ModuleEntity": {
+      "title": "ModuleEntity",
+      "description": "Training module organizing Muay Thai video lessons.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "coverTheme": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "order": {
+          "type": "number"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["published"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "code", "title", "description", "coverTheme", "order", "visibility", "createdAt", "updatedAt"]
+    },
+    "VideoEntity": {
+      "title": "VideoEntity",
+      "description": "Muay Thai video lesson linked to Google Drive.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "moduleId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "description": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 800
+        },
+        "duration": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "driveLink": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "driveFileId": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "order": {
+          "type": "number"
+        },
+        "embedAllowed": {
+          "type": "boolean"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["published"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "moduleId", "title", "description", "duration", "driveLink", "driveFileId", "order", "embedAllowed", "visibility", "createdAt", "updatedAt"]
+    },
+    "BonusEntity": {
+      "title": "BonusEntity",
+      "description": "Exclusive downloadable PDF training bonus.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "allowedPlans": {
+          "type": "array",
+          "maxLength": 3
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["published"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "code", "title", "description", "allowedPlans", "visibility", "createdAt", "updatedAt"]
+    },
+    "ProgressEntity": {
+      "title": "ProgressEntity",
+      "description": "Student workout completion and favorite video tracking.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "completedVideoIds": {
+          "type": "array",
+          "maxLength": 500
+        },
+        "favoriteVideoIds": {
+          "type": "array",
+          "maxLength": 500
+        },
+        "lastWatchedVideoId": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "completedVideoIds", "favoriteVideoIds", "lastWatchedVideoId", "createdAt", "updatedAt"]
+    },
+    "LiveClassEntity": {
+      "title": "LiveClassEntity",
+      "description": "Scheduled VIP live Muay Thai training session.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "date": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30
+        },
+        "time": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "instructor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "streamUrl": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["vip"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "title", "date", "time", "instructor", "streamUrl", "visibility", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Administrator registry keyed by UID."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profiles containing plan tier and PII (email)."
+    },
+    "/modules/{moduleId}": {
+      "schema": { "$ref": "#/entities/ModuleEntity" },
+      "description": "Muay Thai training modules."
+    },
+    "/videos/{videoId}": {
+      "schema": { "$ref": "#/entities/VideoEntity" },
+      "description": "Muay Thai lessons linked to Google Drive."
+    },
+    "/bonuses/{bonusId}": {
+      "schema": { "$ref": "#/entities/BonusEntity" },
+      "description": "Exclusive downloadable PDF bonuses."
+    },
+    "/progress/{userId}": {
+      "schema": { "$ref": "#/entities/ProgressEntity" },
+      "description": "Individual student completion and favorite progress records."
+    },
+    "/liveClasses/{classId}": {
+      "schema": { "$ref": "#/entities/LiveClassEntity" },
+      "description": "Live Muay Thai classes for VIP students."
+    }
+  }
+}
