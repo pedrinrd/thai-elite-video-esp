@@ -12,36 +12,51 @@ import {
   Users,
   Settings,
   Shield,
-  LogOut,
+  Link2,
+  Check,
 } from 'lucide-react';
 import {
   AdminTab,
   BootstrapPayload,
   StudentTab,
-  UserProfile,
   VideoItem,
 } from './types';
 import { calculateProgressStats } from './utils/driveUtils';
-import { initAuth, logoutGoogle, syncFirebaseUserProgress } from './services/googleAuth';
-import { LoginView } from './components/LoginView';
+import { initAuth } from './services/googleAuth';
+import { apiFetch, getDirectBootstrapPayload } from './services/vercelApiFallback';
 import { StudentArea } from './components/StudentArea';
 import { AdminArea } from './components/AdminArea';
 import { VideoPlayerModal } from './components/VideoPlayerModal';
 
 const SESSION_TOKEN_KEY = 'thai_elite_session_token';
 
+function getInitialRoleFromUrl(): 'student' | 'admin' {
+  if (typeof window === 'undefined') return 'student';
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('role') === 'admin' || params.get('admin') === '1') {
+    return 'admin';
+  }
+  return 'student';
+}
+
 export default function App() {
-  const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem(SESSION_TOKEN_KEY)
-  );
+  const initialRole = getInitialRoleFromUrl();
+  const initialDirect = getDirectBootstrapPayload(initialRole);
+
+  const [token, setToken] = useState<string>(() => {
+    const saved = localStorage.getItem(SESSION_TOKEN_KEY);
+    if (saved) return saved;
+    localStorage.setItem(SESSION_TOKEN_KEY, initialDirect.token);
+    return initialDirect.token;
+  });
+
   // Google Drive OAuth token kept strictly in memory per workspace-integration rules
   const [driveAccessToken, setDriveAccessToken] = useState<string | null>(null);
-  const [data, setData] = useState<BootstrapPayload | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<BootstrapPayload>(() => initialDirect.payload);
+  const [copiedStudentLink, setCopiedStudentLink] = useState(false);
 
   // Environment & Tab Navigation State
-  const [environment, setEnvironment] = useState<'student' | 'admin'>('student');
+  const [environment, setEnvironment] = useState<'student' | 'admin'>(initialRole);
   const [studentTab, setStudentTab] = useState<StudentTab>('inicio');
   const [adminTab, setAdminTab] = useState<AdminTab>('dashboard');
 
@@ -60,93 +75,65 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  const fetchBootstrap = useCallback(async (sessionToken: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/bootstrap', {
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-        },
-      });
-      if (!res.ok) {
-        localStorage.removeItem(SESSION_TOKEN_KEY);
-        setToken(null);
-        setData(null);
-        setLoading(false);
-        return;
+  const fetchBootstrap = useCallback(
+    async (sessionToken: string, targetEnv: 'student' | 'admin' = environment) => {
+      try {
+        const res = await apiFetch('/api/bootstrap', {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        });
+        const contentType = (res.headers.get('content-type') || '').toLowerCase();
+        if (!res.ok || !contentType.includes('application/json')) {
+          const fallback = getDirectBootstrapPayload(targetEnv);
+          setData(fallback.payload);
+          return;
+        }
+        const payload: BootstrapPayload = await res.json();
+        if (payload && payload.user && Array.isArray(payload.modules)) {
+          setData(payload);
+        }
+      } catch {
+        const fallback = getDirectBootstrapPayload(targetEnv);
+        setData(fallback.payload);
       }
-      const payload: BootstrapPayload = await res.json();
-      setData(payload);
-    } catch (err: any) {
-      setError(err.message || 'Error al cargar los datos de la plataforma.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [environment]
+  );
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const autostart = params.get('autostart') === '1';
-    const roleParam = params.get('role') === 'admin' ? 'admin' : 'student';
+    fetchBootstrap(token, environment);
+  }, [token, environment, fetchBootstrap]);
 
-    if (token) {
-      fetchBootstrap(token);
-    } else if (autostart) {
-      fetch('/api/auth/quick-access', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetRole: roleParam, targetPlan: 'VIP' }),
-      })
-        .then((r) => r.json())
-        .then((res) => {
-          if (res.token) {
-            localStorage.setItem(SESSION_TOKEN_KEY, res.token);
-            setToken(res.token);
-            if (roleParam === 'admin') {
-              setEnvironment('admin');
-            }
-          } else {
-            setLoading(false);
-          }
-        })
-        .catch(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
-  }, [token, fetchBootstrap]);
-
-  const handleAuthenticated = (
-    newToken: string,
-    user: UserProfile,
-    googleDriveToken?: string
-  ) => {
-    localStorage.setItem(SESSION_TOKEN_KEY, newToken);
-    if (googleDriveToken) {
-      setDriveAccessToken(googleDriveToken);
-    }
-    setToken(newToken);
-    if (user.role === 'admin') {
-      setEnvironment('admin');
-    } else {
-      setEnvironment('student');
-    }
+  const handleSwitchEnvironment = (nextEnv: 'student' | 'admin') => {
+    const direct = getDirectBootstrapPayload(nextEnv);
+    localStorage.setItem(SESSION_TOKEN_KEY, direct.token);
+    setToken(direct.token);
+    setData(direct.payload);
+    setEnvironment(nextEnv);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleLogout = async () => {
-    localStorage.removeItem(SESSION_TOKEN_KEY);
-    setToken(null);
-    setData(null);
-    setActiveVideo(null);
-    setEnvironment('student');
-    await logoutGoogle();
+  const handleCopyStudentLink = async () => {
+    const studentUrl = `${window.location.origin}/?acceso=alumno`;
+    try {
+      await navigator.clipboard.writeText(studentUrl);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = studentUrl;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setCopiedStudentLink(true);
+    setTimeout(() => setCopiedStudentLink(false), 2600);
   };
 
   const handlePlayVideo = async (video: VideoItem) => {
     setActiveVideo(video);
-    if (!token) return;
     try {
-      const res = await fetch('/api/progress/watch', {
+      const res = await apiFetch('/api/progress/watch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -156,7 +143,9 @@ export default function App() {
       });
       if (res.ok) {
         const { progress } = await res.json();
-        setData((prev) => (prev ? { ...prev, progress } : prev));
+        if (progress) {
+          setData((prev) => ({ ...prev, progress }));
+        }
       }
     } catch {
       // ignore watch tracking failure
@@ -164,9 +153,8 @@ export default function App() {
   };
 
   const handleToggleComplete = async (videoId: string) => {
-    if (!token) return;
     try {
-      const res = await fetch('/api/progress/toggle-complete', {
+      const res = await apiFetch('/api/progress/toggle-complete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -176,7 +164,9 @@ export default function App() {
       });
       if (res.ok) {
         const { progress } = await res.json();
-        setData((prev) => (prev ? { ...prev, progress } : prev));
+        if (progress) {
+          setData((prev) => ({ ...prev, progress }));
+        }
       }
     } catch (err) {
       console.error(err);
@@ -184,9 +174,8 @@ export default function App() {
   };
 
   const handleToggleFavorite = async (videoId: string) => {
-    if (!token) return;
     try {
-      const res = await fetch('/api/progress/toggle-favorite', {
+      const res = await apiFetch('/api/progress/toggle-favorite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -196,7 +185,9 @@ export default function App() {
       });
       if (res.ok) {
         const { progress } = await res.json();
-        setData((prev) => (prev ? { ...prev, progress } : prev));
+        if (progress) {
+          setData((prev) => ({ ...prev, progress }));
+        }
       }
     } catch (err) {
       console.error(err);
@@ -204,8 +195,7 @@ export default function App() {
   };
 
   const handleUpdateProfile = async (name: string, newPassword?: string) => {
-    if (!token) return;
-    const res = await fetch('/api/profile', {
+    const res = await apiFetch('/api/profile', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -217,34 +207,24 @@ export default function App() {
     if (!res.ok) {
       throw new Error(body.error || 'No se pudo actualizar el perfil.');
     }
-    setData((prev) => (prev ? { ...prev, user: body.user } : prev));
+    if (body.user) {
+      setData((prev) => ({ ...prev, user: body.user }));
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#090909] text-white flex items-center justify-center p-6">
-        <div className="text-center space-y-3">
-          <div
-            className="text-3xl font-extrabold tracking-wider uppercase"
-            style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
-          >
-            THAI ELITE <span className="text-[#E50914]">MÉXICO</span>
-          </div>
-          <p className="text-xs text-neutral-400">Cargando tu área de entrenamiento...</p>
-        </div>
-      </div>
-    );
-  }
+  const {
+    user,
+    modules,
+    videos,
+    bonuses,
+    progress,
+    liveClasses,
+    vipAllowed,
+    settings,
+    adminData,
+  } = data;
 
-  if (!token || !data) {
-    return <LoginView onAuthenticated={handleAuthenticated} />;
-  }
-
-  const { user, modules, videos, bonuses, progress, liveClasses, vipAllowed, settings, adminData } =
-    data;
-
-  const isAdmin = user.role === 'admin';
-  const currentEnv = isAdmin ? environment : 'student';
+  const currentEnv = environment;
 
   const progressStats = calculateProgressStats(
     progress.completedVideoIds || [],
@@ -269,7 +249,6 @@ export default function App() {
     if (idxInMod !== -1 && idxInMod + 1 < activeModuleVideos.length) {
       return activeModuleVideos[idxInMod + 1];
     }
-    // Check next module with videos
     if (activeVideoModule) {
       const modIdx = modules.findIndex((m) => m.id === activeVideoModule.id);
       for (let i = modIdx + 1; i < modules.length; i++) {
@@ -322,40 +301,56 @@ export default function App() {
               THAI ELITE <span className="text-[#E50914]">MÉXICO</span>
             </span>
             <span className="block text-[11px] text-neutral-400 tracking-wide mt-1 truncate">
-              Plataforma Oficial
+              Acceso Directo • Sin Cuenta
             </span>
           </div>
         </div>
 
-        {/* Admin Environment Switcher (strictly visible only to Administrators) */}
-        {isAdmin && (
-          <div className="p-4 border-b border-neutral-800">
-            <div className="grid grid-cols-2 gap-1 p-1 bg-[#090909] rounded-xl border border-neutral-800">
-              <button
-                type="button"
-                onClick={() => setEnvironment('student')}
-                className={`py-2 px-2 text-xs font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
-                  currentEnv === 'student'
-                    ? 'bg-[#E50914] text-white'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-              >
-                Área Alumno
-              </button>
-              <button
-                type="button"
-                onClick={() => setEnvironment('admin')}
-                className={`py-2 px-2 text-xs font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
-                  currentEnv === 'admin'
-                    ? 'bg-[#E50914] text-white'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-              >
-                Panel Admin
-              </button>
-            </div>
+        {/* Direct Environment Switcher */}
+        <div className="p-4 border-b border-neutral-800 space-y-2.5">
+          <div className="grid grid-cols-2 gap-1 p-1 bg-[#090909] rounded-xl border border-neutral-800">
+            <button
+              type="button"
+              onClick={() => handleSwitchEnvironment('student')}
+              className={`py-2 px-2 text-xs font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
+                currentEnv === 'student'
+                  ? 'bg-[#E50914] text-white'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              Área Alumno
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSwitchEnvironment('admin')}
+              className={`py-2 px-2 text-xs font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
+                currentEnv === 'admin'
+                  ? 'bg-[#E50914] text-white'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              Panel Admin
+            </button>
           </div>
-        )}
+
+          <button
+            type="button"
+            onClick={handleCopyStudentLink}
+            className="w-full py-2 px-3 rounded-xl bg-[#141414] hover:bg-neutral-800 border border-neutral-800 text-[11px] font-bold text-neutral-200 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            {copiedStudentLink ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="text-emerald-400">¡Link de Alumno Copiado!</span>
+              </>
+            ) : (
+              <>
+                <Link2 className="w-3.5 h-3.5 text-[#E50914] shrink-0" />
+                <span>Copiar Link de Alumno</span>
+              </>
+            )}
+          </button>
+        </div>
 
         {/* Navigation Links */}
         <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto" aria-label="Menú principal">
@@ -414,9 +409,11 @@ export default function App() {
                 <div className="text-sm font-bold text-white truncate">{user.name}</div>
                 <div className="flex items-center justify-between text-xs text-neutral-400">
                   <span className="truncate">
-                    {isAdmin ? 'Administrador Oficial' : `Plan ${user.plan}`}
+                    {currentEnv === 'admin' ? 'Administrador Oficial' : 'Acceso Directo VIP'}
                   </span>
-                  <span className="tabular-nums text-white font-semibold">{progressStats.percentage}%</span>
+                  <span className="tabular-nums text-white font-semibold">
+                    {progressStats.percentage}%
+                  </span>
                 </div>
               </div>
             </div>
@@ -427,14 +424,6 @@ export default function App() {
               />
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="w-full px-4 py-2.5 min-h-[44px] rounded-xl bg-[#171717] hover:bg-neutral-800 border border-neutral-800 text-xs font-semibold text-neutral-300 hover:text-white flex items-center justify-center gap-2 transition-colors cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Cerrar Sesión</span>
-          </button>
         </div>
       </aside>
 
@@ -443,67 +432,80 @@ export default function App() {
       ========================================== */}
       <div className="flex-1 lg:pl-64 flex flex-col min-h-screen">
         {/* Top Header Contract (Mobile & Desktop) */}
-        <header className="sticky top-0 z-20 h-14 px-4 sm:px-8 bg-[#090909]/90 backdrop-blur-md border-b border-neutral-800 flex items-center justify-between gap-8">
+        <header className="sticky top-0 z-20 h-14 px-3.5 sm:px-8 bg-[#090909]/95 backdrop-blur-md border-b border-neutral-800 flex items-center justify-between gap-2 sm:gap-6">
           <a
             href="#top"
             onClick={(e) => {
               e.preventDefault();
               if (currentEnv === 'student') setStudentTab('inicio');
               else setAdminTab('dashboard');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className="text-lg font-extrabold tracking-wider text-white uppercase whitespace-nowrap shrink-0"
+            className="text-base sm:text-lg font-extrabold tracking-wider text-white uppercase whitespace-nowrap shrink-0 flex items-center gap-2"
             style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
           >
-            THAI ELITE MÉXICO
+            <span className="w-6 h-6 rounded-md bg-[#E50914] flex items-center justify-center lg:hidden shrink-0">
+              <Dumbbell className="w-3.5 h-3.5 text-white" />
+            </span>
+            <span>
+              THAI ELITE <span className="text-[#E50914]">MÉXICO</span>
+            </span>
           </a>
 
           <div className="hidden md:flex items-center gap-6 text-xs font-medium text-neutral-400">
             <span className="whitespace-nowrap shrink-0">
-              {currentEnv === 'admin' ? 'Ambiente: Panel Administrativo' : `Ambiente: Área del Alumno (Plan ${user.plan})`}
+              {currentEnv === 'admin'
+                ? 'Ambiente: Panel Administrativo'
+                : 'Acceso Directo del Alumno • Plan VIP Activo'}
             </span>
             <span className="whitespace-nowrap shrink-0 tabular-nums">
               Avance: {progressStats.percentage}%
             </span>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
-            {isAdmin ? (
-              <button
-                type="button"
-                onClick={() =>
-                  setEnvironment((prev) => (prev === 'admin' ? 'student' : 'admin'))
-                }
-                className="px-3.5 py-1.5 min-h-[38px] rounded-lg bg-[#171717] hover:bg-neutral-800 border border-neutral-700 text-xs font-bold text-white flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
-              >
-                <Shield className="w-3.5 h-3.5 text-[#E50914]" />
-                <span>
-                  {currentEnv === 'admin' ? 'Ver Área del Alumno' : 'Ir a Panel Admin'}
-                </span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="px-3.5 py-1.5 min-h-[38px] rounded-lg bg-[#171717] hover:bg-neutral-800 border border-neutral-800 text-xs font-semibold text-neutral-300 hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
-              >
-                Salir
-              </button>
-            )}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleCopyStudentLink}
+              className="px-2.5 sm:px-3.5 py-1.5 min-h-[36px] rounded-lg bg-[#141414] hover:bg-neutral-800 border border-neutral-700 text-[11px] sm:text-xs font-bold text-white flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              title="Copiar link de acceso directo del alumno (sin crear cuenta)"
+            >
+              {copiedStudentLink ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="text-emerald-400">¡Link Copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Link2 className="w-3.5 h-3.5 text-[#E50914] shrink-0" />
+                  <span className="hidden sm:inline">Copiar Link Alumno</span>
+                  <span className="sm:hidden">Link Alumno</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                handleSwitchEnvironment(currentEnv === 'admin' ? 'student' : 'admin')
+              }
+              className="px-2.5 sm:px-3.5 py-1.5 min-h-[36px] rounded-lg bg-[#171717] hover:bg-neutral-800 border border-neutral-800 text-[11px] sm:text-xs font-bold text-neutral-200 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <Shield className="w-3.5 h-3.5 text-[#E50914]" />
+              <span>{currentEnv === 'admin' ? 'Área Alumno' : 'Admin'}</span>
+            </button>
           </div>
         </header>
 
-        {error && (
-          <div className="mx-4 sm:mx-8 mt-4 p-4 rounded-xl bg-[#E50914]/15 border border-[#E50914] text-xs text-red-200">
-            {error}
-          </div>
-        )}
-
         {/* Active Workspace View */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 pt-6">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-8 pt-4 sm:pt-6">
           {currentEnv === 'student' ? (
             <StudentArea
               activeTab={studentTab}
-              onChangeTab={setStudentTab}
+              onChangeTab={(tab) => {
+                setStudentTab(tab);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               user={user}
               token={token}
               modules={modules}
@@ -518,12 +520,14 @@ export default function App() {
               onToggleComplete={handleToggleComplete}
               onToggleFavorite={handleToggleFavorite}
               onUpdateProfile={handleUpdateProfile}
-              onLogout={handleLogout}
             />
           ) : (
             <AdminArea
               activeTab={adminTab}
-              onChangeTab={setAdminTab}
+              onChangeTab={(tab) => {
+                setAdminTab(tab);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               token={token}
               driveAccessToken={driveAccessToken}
               onSetDriveAccessToken={setDriveAccessToken}
@@ -533,7 +537,7 @@ export default function App() {
               students={adminData?.students || []}
               liveClasses={liveClasses}
               settings={settings}
-              onRefreshData={() => fetchBootstrap(token)}
+              onRefreshData={() => fetchBootstrap(token, currentEnv)}
               onPreviewVideo={handlePlayVideo}
             />
           )}
@@ -545,7 +549,7 @@ export default function App() {
       ========================================== */}
       <nav
         aria-label="Navegación móvil"
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 h-16 bg-[#121212]/95 backdrop-blur-md border-t border-neutral-800 px-1"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 h-16 bg-[#0d0d0d]/95 backdrop-blur-md border-t border-neutral-800 px-1 shadow-[0_-10px_25px_rgba(0,0,0,0.85)]"
       >
         {currentEnv === 'student' ? (
           <div className="grid grid-cols-5 items-center h-full">
@@ -555,13 +559,19 @@ export default function App() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setStudentTab(item.id)}
-                  className={`min-h-[44px] flex flex-col items-center justify-center transition-colors cursor-pointer ${
+                  onClick={() => {
+                    setStudentTab(item.id);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={`relative min-h-[48px] h-full flex flex-col items-center justify-center transition-colors cursor-pointer ${
                     active ? 'text-[#E50914]' : 'text-neutral-400 hover:text-white'
                   }`}
                 >
+                  {active && (
+                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-7 h-0.5 rounded-full bg-[#E50914]" />
+                  )}
                   {item.icon}
-                  <span className="text-[10px] font-semibold tracking-tighter mt-0.5 w-full text-center px-0.5 truncate">
+                  <span className="text-[10px] font-semibold tracking-tight mt-0.5 w-full text-center px-0.5 truncate">
                     {item.label === 'Mi progreso' ? 'Progreso' : item.label}
                   </span>
                 </button>
@@ -576,11 +586,17 @@ export default function App() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setAdminTab(item.id)}
-                  className={`min-h-[44px] flex flex-col items-center justify-center transition-colors cursor-pointer ${
+                  onClick={() => {
+                    setAdminTab(item.id);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={`relative min-h-[48px] h-full flex flex-col items-center justify-center transition-colors cursor-pointer ${
                     active ? 'text-[#E50914]' : 'text-neutral-400 hover:text-white'
                   }`}
                 >
+                  {active && (
+                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-[#E50914]" />
+                  )}
                   {item.icon}
                   <span className="text-[10px] font-semibold tracking-tight mt-0.5 truncate max-w-[56px]">
                     {item.label}

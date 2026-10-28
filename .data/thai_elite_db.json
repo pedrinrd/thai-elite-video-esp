@@ -55,6 +55,16 @@
         "bono-04"
       ],
       "createdAt": "2026-10-26T08:43:52.013Z"
+    },
+    {
+      "id": "usr-1793203780109",
+      "name": "Nuevo Alumno",
+      "email": "nuevo.alumno@thaielite.mx",
+      "role": "student",
+      "plan": "VIP",
+      "blocked": false,
+      "unlockedBonusIds": [],
+      "createdAt": "2026-10-28T16:09:40.109Z"
     }
   ],
   "modules": [
@@ -7295,6 +7305,13 @@
       "favoriteVideoIds": [],
       "lastWatchedVideoId": null,
       "updatedAt": "2026-10-27T08:43:52.013Z"
+    },
+    "usr-1793203780109": {
+      "userId": "usr-1793203780109",
+      "completedVideoIds": [],
+      "favoriteVideoIds": [],
+      "lastWatchedVideoId": null,
+      "updatedAt": "2026-10-28T16:09:40.109Z"
     }
   },
   "liveClasses": [],

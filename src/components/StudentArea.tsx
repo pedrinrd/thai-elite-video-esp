@@ -13,8 +13,9 @@ import {
   ChevronRight,
   Award,
   Video,
-  User as UserIcon,
-  LogOut,
+  BookOpen,
+  X,
+  FileText,
 } from 'lucide-react';
 import {
   BonusItem,
@@ -28,6 +29,10 @@ import {
 } from '../types';
 import { MuayThaiArtwork } from './MuayThaiArtwork';
 import { OverallProgressResult } from '../utils/driveUtils';
+import {
+  getSpanishBonusManual,
+  triggerSpanishBonusPdfDownload,
+} from '../utils/spanishBonusPdf';
 
 interface StudentAreaProps {
   activeTab: StudentTab;
@@ -46,7 +51,6 @@ interface StudentAreaProps {
   onToggleComplete: (videoId: string) => void;
   onToggleFavorite: (videoId: string) => void;
   onUpdateProfile: (name: string, newPassword?: string) => Promise<void>;
-  onLogout: () => void;
 }
 
 export const StudentArea: React.FC<StudentAreaProps> = ({
@@ -66,7 +70,6 @@ export const StudentArea: React.FC<StudentAreaProps> = ({
   onToggleComplete,
   onToggleFavorite,
   onUpdateProfile,
-  onLogout,
 }) => {
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,6 +78,8 @@ export const StudentArea: React.FC<StudentAreaProps> = ({
   const [newPassword, setNewPassword] = useState('');
   const [profileStatus, setProfileStatus] = useState<string | null>(null);
   const [downloadingBonusId, setDownloadingBonusId] = useState<string | null>(null);
+  const [readingBonus, setReadingBonus] = useState<BonusItem | null>(null);
+  const [lastDownloadedBonusId, setLastDownloadedBonusId] = useState<string | null>(null);
 
   const continueVideo =
     videos.find((v) => v.id === progress.lastWatchedVideoId) ||
@@ -98,24 +103,11 @@ export const StudentArea: React.FC<StudentAreaProps> = ({
     if (!bonus.hasAccess) return;
     setDownloadingBonusId(bonus.id);
     try {
-      const res = await fetch(`/api/bonuses/${bonus.id}/download`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Error al descargar el PDF.');
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = bonus.pdfFileName || `${bonus.code.replace(/\s+/g, '_')}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      triggerSpanishBonusPdfDownload(bonus);
+      setLastDownloadedBonusId(bonus.id);
+      setTimeout(() => {
+        setLastDownloadedBonusId((prev) => (prev === bonus.id ? null : prev));
+      }, 4000);
     } catch (err) {
       console.error('Error downloading PDF:', err);
     } finally {
@@ -190,11 +182,11 @@ export const StudentArea: React.FC<StudentAreaProps> = ({
             <p className="text-sm sm:text-base text-neutral-200 leading-relaxed max-w-xl">
               Domina la guardia tailandesa, combinaciones de puños, low kicks, rodillas, codos y acondicionamiento físico con reproducción directa integrada desde Google Drive.
             </p>
-            <div className="pt-2 flex flex-wrap items-center gap-3.5">
+            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <button
                 type="button"
                 onClick={handleStartTraining}
-                className="px-7 py-3.5 min-h-[48px] rounded-xl bg-[#E50914] hover:bg-[#c40811] text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2.5 transition-all cursor-pointer whitespace-nowrap shadow-[0_10px_28px_-6px_rgba(229,9,20,0.65)]"
+                className="w-full sm:w-auto px-7 py-3.5 min-h-[48px] rounded-xl bg-[#E50914] hover:bg-[#c40811] text-white font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all cursor-pointer whitespace-nowrap shadow-[0_10px_28px_-6px_rgba(229,9,20,0.65)]"
               >
                 <Play className="w-4 h-4 fill-white" />
                 <span>¡EMPEZAR A ENTRENAR!</span>
@@ -202,7 +194,7 @@ export const StudentArea: React.FC<StudentAreaProps> = ({
               <button
                 type="button"
                 onClick={() => onChangeTab('entrenamientos')}
-                className="px-6 py-3.5 min-h-[48px] rounded-xl bg-[#171717]/90 hover:bg-neutral-800 border border-neutral-700 text-white font-semibold text-sm flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
+                className="w-full sm:w-auto px-6 py-3.5 min-h-[48px] rounded-xl bg-[#171717]/90 hover:bg-neutral-800 border border-neutral-700 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
               >
                 <span>Explorar los 10 Módulos</span>
                 <ChevronRight className="w-4 h-4" />
@@ -597,6 +589,30 @@ export const StudentArea: React.FC<StudentAreaProps> = ({
           </div>
         </div>
 
+        {/* Mobile Quick Touch Module Bar (<1024px) */}
+        <div className="flex lg:hidden overflow-x-auto gap-2 pb-2 -mx-4 px-4 no-scrollbar">
+          {modules.map((mod) => {
+            const isSelected = activeModule?.id === mod.id;
+            return (
+              <button
+                key={`mob-pill-${mod.id}`}
+                type="button"
+                onClick={() => {
+                  setSelectedModuleId(mod.id);
+                  setVisibleVideoCount(12);
+                }}
+                className={`px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap shrink-0 border transition-colors cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#E50914] border-[#E50914] text-white shadow-[0_4px_14px_rgba(229,9,20,0.45)]'
+                    : 'bg-[#171717] border-neutral-800 text-neutral-300 hover:text-white'
+                }`}
+              >
+                Mód {mod.code} · {mod.title.split(' ')[0]}
+              </button>
+            );
+          })}
+        </div>
+
         {/* 10 Modules Selector Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {filteredModules.map((mod) => {
@@ -801,98 +817,272 @@ export const StudentArea: React.FC<StudentAreaProps> = ({
   }
 
   // ==========================================
-  // TAB 3: BONOS (DESCARGA REAL DE PDFs)
+  // TAB 3: BONOS (DESCARGA REAL DE PDFs EN ESPAÑOL + LECTOR INTEGRADO)
   // ==========================================
   if (activeTab === 'bonos') {
+    const activeManual = readingBonus ? getSpanishBonusManual(readingBonus) : null;
+
     return (
       <div className="space-y-8 pb-24 lg:pb-12">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#E50914]">
-            Material Complementario Descargable · Plan {user.plan}
-          </p>
-          <h1
-            className="text-3xl sm:text-5xl font-extrabold text-white uppercase tracking-tight mt-1"
-            style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
-          >
-            BONOS EXCLUSIVOS EN PDF
-          </h1>
-          <p className="text-sm text-neutral-300 mt-1 max-w-2xl">
-            Descarga tus manuales y guías oficiales en formato PDF listos para consultar en tu celular, tablet o computadora.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#E50914]">
+              Material Complementario Descargable · 100% en Español · Plan {user.plan}
+            </p>
+            <h1
+              className="text-3xl sm:text-5xl font-extrabold text-white uppercase tracking-tight mt-1"
+              style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+            >
+              BONOS EXCLUSIVOS EN PDF (ESPAÑOL)
+            </h1>
+            <p className="text-sm text-neutral-300 mt-1 max-w-2xl">
+              Descarga tus 5 manuales oficiales completos en formato PDF (5 páginas cada uno en español) o léelos directamente en tu celular, tablet o computadora.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#171717] border border-neutral-800 text-xs text-neutral-300 self-start sm:self-auto">
+            <FileText className="w-4 h-4 text-[#E50914] shrink-0" />
+            <span>5 E-Books Oficiales en Español</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {bonuses.map((bonus) => (
-            <div
-              key={bonus.id}
-              className="rounded-2xl bg-[#171717] border border-neutral-800 overflow-hidden flex flex-col justify-between"
-            >
-              <div>
-                <div className="relative aspect-[4/3] w-full overflow-hidden">
-                  <MuayThaiArtwork
-                    variant="bonus"
-                    code={bonus.code}
-                    title={bonus.title}
-                    imageUrl={bonus.coverUrl}
-                    className="w-full h-full"
-                  />
-                  <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between text-xs">
-                    <span className="font-bold text-[#E50914] uppercase">{bonus.code}</span>
-                    <span className="text-neutral-300">
-                      Planes: {bonus.allowedPlans.join(' / ')}
-                    </span>
+          {bonuses.map((bonus) => {
+            const manual = getSpanishBonusManual(bonus);
+            const justDownloaded = lastDownloadedBonusId === bonus.id;
+
+            return (
+              <div
+                key={bonus.id}
+                className="rounded-2xl bg-[#171717] border border-neutral-800 overflow-hidden flex flex-col justify-between shadow-lg"
+              >
+                <div>
+                  <div className="relative aspect-[4/3] w-full overflow-hidden">
+                    <MuayThaiArtwork
+                      variant="bonus"
+                      code={bonus.code}
+                      title={bonus.title}
+                      imageUrl={bonus.coverUrl}
+                      className="w-full h-full"
+                    />
+                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-sm border border-neutral-700 text-[11px] font-bold text-white uppercase tracking-wider">
+                      PDF · {manual.pageCount} Páginas · Español
+                    </div>
+                    <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#E50914] uppercase">{bonus.code}</span>
+                      <span className="text-neutral-300">
+                        Planes: {bonus.allowedPlans.join(' / ')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-5 space-y-3">
+                    <h2 className="text-lg font-bold text-white leading-snug">{bonus.title}</h2>
+                    <p className="text-xs text-neutral-300 leading-relaxed">
+                      {bonus.description}
+                    </p>
+
+                    {/* Preview of Spanish Chapters */}
+                    <div className="pt-2 border-t border-neutral-800/80 space-y-1.5">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+                        Capítulos incluidos en el PDF:
+                      </p>
+                      <ul className="space-y-1">
+                        {manual.chapters.slice(0, 3).map((ch) => (
+                          <li
+                            key={ch.chapterNumber}
+                            className="text-xs text-neutral-300 flex items-start gap-1.5 line-clamp-1"
+                          >
+                            <span className="text-[#E50914] font-bold shrink-0">•</span>
+                            <span className="truncate">{ch.title}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 </div>
 
-                <div className="p-5 space-y-2">
-                  <h2 className="text-lg font-bold text-white">{bonus.title}</h2>
-                  <p className="text-xs text-neutral-400 leading-relaxed">
-                    {bonus.description}
+                <div className="p-5 pt-0 space-y-2.5">
+                  {bonus.hasAccess ? (
+                    <>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadBonus(bonus)}
+                          disabled={downloadingBonusId === bonus.id}
+                          className="flex-1 py-3 px-4 min-h-[46px] rounded-xl bg-[#E50914] hover:bg-[#c40811] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap shadow-[0_8px_20px_-6px_rgba(229,9,20,0.6)]"
+                        >
+                          <Download className="w-4 h-4 shrink-0" />
+                          <span>
+                            {downloadingBonusId === bonus.id
+                              ? 'GENERANDO PDF...'
+                              : justDownloaded
+                              ? '¡PDF DESCARGADO!'
+                              : 'DESCARGAR PDF'}
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setReadingBonus(bonus)}
+                          className="py-3 px-4 min-h-[46px] rounded-xl bg-[#090909] hover:bg-neutral-800 border border-neutral-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
+                        >
+                          <BookOpen className="w-3.5 h-3.5 text-[#E50914] shrink-0" />
+                          <span>Leer Manual</span>
+                        </button>
+                      </div>
+
+                      {bonus.pdfDriveLink && (
+                        <a
+                          href={bonus.pdfDriveLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-2.5 px-4 min-h-[40px] rounded-xl bg-[#090909] hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>Abrir respaldo en Google Drive</span>
+                        </a>
+                      )}
+                    </>
+                  ) : (
+                    <div className="p-3.5 rounded-xl bg-[#090909] border border-neutral-800 flex items-center justify-between text-xs text-neutral-400">
+                      <span className="flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-[#E50914]" />
+                        <span>Disponible en Plan {bonus.allowedPlans.join(' o ')}</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Interactive Spanish Bonus Manual Reader Modal */}
+        {readingBonus && activeManual && (
+          <div
+            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md overflow-y-auto p-3 sm:p-6 lg:p-10"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Manual en Español: ${activeManual.title}`}
+          >
+            <div className="max-w-4xl mx-auto rounded-2xl sm:rounded-3xl bg-[#141414] border border-neutral-800 overflow-hidden shadow-2xl">
+              {/* Top Sticky Reader Bar */}
+              <div className="sticky top-0 z-20 px-4 sm:px-8 py-4 bg-[#090909]/95 backdrop-blur-md border-b border-neutral-800 flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#E50914]">
+                    {activeManual.code} · {activeManual.edition}
+                  </span>
+                  <h2
+                    className="text-lg sm:text-2xl font-extrabold text-white uppercase truncate"
+                    style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+                  >
+                    {activeManual.title}
+                  </h2>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadBonus(readingBonus)}
+                    className="px-4 py-2.5 min-h-[42px] rounded-xl bg-[#E50914] hover:bg-[#c40811] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Descargar PDF ({activeManual.pageCount} págs)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReadingBonus(null)}
+                    aria-label="Cerrar lector de manual"
+                    className="p-2.5 min-h-[42px] min-w-[42px] rounded-xl bg-[#171717] hover:bg-neutral-800 border border-neutral-700 text-white flex items-center justify-center transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Manual Content Body */}
+              <div className="p-5 sm:p-8 space-y-8">
+                {/* Intro Box */}
+                <div className="p-5 sm:p-6 rounded-2xl bg-[#090909] border-l-4 border-[#E50914] space-y-2">
+                  <div className="text-xs font-bold uppercase tracking-wider text-[#E50914]">
+                    Introducción Oficial · {activeManual.estimatedReadTime}
+                  </div>
+                  <p className="text-sm text-neutral-200 leading-relaxed">
+                    {activeManual.introduction}
                   </p>
                 </div>
-              </div>
 
-              <div className="p-5 pt-0 space-y-2">
-                {bonus.hasAccess ? (
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadBonus(bonus)}
-                      disabled={downloadingBonusId === bonus.id}
-                      className="flex-1 py-3 px-4 min-h-[46px] rounded-xl bg-[#E50914] hover:bg-[#c40811] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
+                {/* Chapters */}
+                <div className="space-y-6">
+                  {activeManual.chapters.map((ch) => (
+                    <div
+                      key={ch.chapterNumber}
+                      className="p-5 sm:p-6 rounded-2xl bg-[#0d0d0d] border border-neutral-800 space-y-4"
                     >
-                      <Download className="w-4 h-4" />
-                      <span>
-                        {downloadingBonusId === bonus.id
-                          ? 'GENERANDO PDF...'
-                          : 'DESCARGAR PDF'}
-                      </span>
-                    </button>
+                      <div className="border-b border-neutral-800 pb-3">
+                        <span className="text-xs font-bold uppercase tracking-widest text-[#E50914]">
+                          {ch.chapterNumber}
+                        </span>
+                        <h3
+                          className="text-xl sm:text-2xl font-bold text-white uppercase mt-0.5"
+                          style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+                        >
+                          {ch.title}
+                        </h3>
+                        <p className="text-xs text-neutral-400 mt-0.5">{ch.subtitle}</p>
+                      </div>
 
-                    {bonus.pdfDriveLink && (
-                      <a
-                        href={bonus.pdfDriveLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="py-3 px-4 min-h-[46px] rounded-xl bg-[#090909] hover:bg-neutral-800 border border-neutral-800 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap"
+                      <div className="space-y-2.5">
+                        {ch.paragraphs.map((p, i) => (
+                          <p key={i} className="text-sm text-neutral-300 leading-relaxed">
+                            {p}
+                          </p>
+                        ))}
+                      </div>
+
+                      <div className="space-y-2 pt-1">
+                        {ch.bulletPoints.map((bp, i) => (
+                          <div
+                            key={i}
+                            className="p-3 rounded-xl bg-[#161616] border border-neutral-800/80 flex items-start gap-2.5 text-xs sm:text-sm text-neutral-200"
+                          >
+                            <CheckCircle2 className="w-4 h-4 text-[#E50914] shrink-0 mt-0.5" />
+                            <span>{bp}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-[#E50914]/10 border border-[#E50914]/40 text-xs text-neutral-100 font-medium">
+                        {ch.proTip}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Final Daily Checklist */}
+                <div className="p-5 sm:p-6 rounded-2xl bg-[#090909] border border-neutral-800 space-y-3">
+                  <h3
+                    className="text-lg font-bold text-white uppercase tracking-wide"
+                    style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+                  >
+                    Checklist de Ejecución Diaria
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {activeManual.finalChecklist.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3 rounded-xl bg-[#141414] border border-neutral-800 flex items-start gap-2 text-xs text-neutral-300"
                       >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span>Drive</span>
-                      </a>
-                    )}
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                        <span>{item}</span>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <div className="p-3.5 rounded-xl bg-[#090909] border border-neutral-800 flex items-center justify-between text-xs text-neutral-400">
-                    <span className="flex items-center gap-2">
-                      <Lock className="w-4 h-4 text-[#E50914]" />
-                      <span>Disponible en Plan {bonus.allowedPlans.join(' o ')}</span>
-                    </span>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1247,38 +1437,12 @@ export const StudentArea: React.FC<StudentAreaProps> = ({
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="profile-new-password"
-                className="block text-xs font-medium text-neutral-300 mb-1.5"
-              >
-                Cambiar Contraseña (Opcional)
-              </label>
-              <input
-                id="profile-new-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Nueva contraseña (mín. 6 caracteres)"
-                className="w-full px-3.5 py-2.5 bg-[#090909] border border-neutral-800 rounded-xl text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-[#E50914]"
-              />
-            </div>
-
-            <div className="flex items-center justify-between gap-3 pt-2">
+            <div className="pt-2">
               <button
                 type="submit"
-                className="px-5 py-2.5 min-h-[44px] rounded-xl bg-[#E50914] hover:bg-[#c40811] text-white text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                className="w-full px-5 py-2.5 min-h-[44px] rounded-xl bg-[#E50914] hover:bg-[#c40811] text-white text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
               >
                 Guardar Cambios
-              </button>
-
-              <button
-                type="button"
-                onClick={onLogout}
-                className="px-4 py-2.5 min-h-[44px] rounded-xl bg-[#090909] hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Cerrar Sesión</span>
               </button>
             </div>
           </form>

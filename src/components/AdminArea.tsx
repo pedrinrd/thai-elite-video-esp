@@ -36,6 +36,7 @@ import {
   PlanTier,
 } from '../utils/driveUtils';
 import { googleSignIn } from '../services/googleAuth';
+import { apiFetch } from '../services/vercelApiFallback';
 import { ConfirmModal } from './ConfirmModal';
 
 interface AdminAreaProps {
@@ -149,7 +150,7 @@ export const AdminArea: React.FC<AdminAreaProps> = ({
   };
 
   const apiCall = async (url: string, options: RequestInit = {}) => {
-    const res = await fetch(url, {
+    const res = await apiFetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',

@@ -64,17 +64,19 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
       aria-modal="true"
       aria-label={`Reproductor: ${video.title}`}
     >
-      <div className="max-w-7xl mx-auto min-h-screen flex flex-col p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto min-h-screen flex flex-col p-3.5 sm:p-6 lg:p-8 pb-20 sm:pb-8">
         {/* Top Header */}
-        <div className="flex items-center justify-between gap-4 pb-4 border-b border-neutral-800">
+        <div className="flex items-center justify-between gap-3 pb-3.5 border-b border-neutral-800">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-xs text-neutral-400">
-              <span>{module ? `Módulo ${module.code}: ${module.title}` : 'Entrenamiento'}</span>
+            <div className="flex items-center gap-2 text-[11px] sm:text-xs text-neutral-400 truncate">
+              <span className="truncate">
+                {module ? `Módulo ${module.code}: ${module.title}` : 'Entrenamiento'}
+              </span>
               <span aria-hidden="true">·</span>
-              <span className="tabular-nums">{video.duration}</span>
+              <span className="tabular-nums shrink-0">{video.duration}</span>
             </div>
             <h2
-              className="text-xl sm:text-2xl font-bold text-white truncate mt-0.5"
+              className="text-lg sm:text-2xl font-bold text-white truncate mt-0.5"
               style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
             >
               {video.title}
@@ -85,17 +87,18 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Cerrar reproductor de video"
-            className="px-4 py-2 min-h-[44px] rounded-xl bg-[#171717] hover:bg-neutral-800 border border-neutral-800 text-sm font-medium text-white flex items-center gap-2 transition-colors shrink-0 cursor-pointer"
+            className="px-3 sm:px-4 py-2 min-h-[42px] rounded-xl bg-[#171717] hover:bg-neutral-800 border border-neutral-800 text-xs sm:text-sm font-medium text-white flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
           >
             <X className="w-4 h-4" />
-            <span>Volver a Módulos</span>
+            <span className="hidden sm:inline">Volver a Módulos</span>
+            <span className="sm:hidden">Cerrar</span>
           </button>
         </div>
 
         {/* Main Player + Playlist Split */}
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+        <div className="mt-4 sm:mt-6 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 flex-1">
           {/* Left 8 cols: Embedded Google Drive Player + Controls */}
-          <div className="lg:col-span-8 flex flex-col gap-5">
+          <div className="lg:col-span-8 flex flex-col gap-4 sm:gap-5">
             <div
               ref={playerContainerRef}
               className="relative w-full aspect-video rounded-2xl overflow-hidden bg-[#121212] border border-neutral-800 shadow-2xl"
@@ -109,53 +112,53 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                   allowFullScreen
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center">
-                  <AlertCircle className="w-12 h-12 text-[#E50914] mb-3" />
-                  <h3 className="text-lg font-bold text-white">
+                <div className="w-full h-full flex flex-col items-center justify-center p-6 sm:p-8 text-center">
+                  <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 text-[#E50914] mb-3" />
+                  <h3 className="text-base sm:text-lg font-bold text-white">
                     Este video tiene restringida la incorporación externa
                   </h3>
-                  <p className="mt-2 text-sm text-neutral-400 max-w-md">
+                  <p className="mt-2 text-xs sm:text-sm text-neutral-400 max-w-md">
                     El archivo de Google Drive ({video.driveFileId}) requiere permisos de vista pública (&quot;Cualquier persona con el enlace&quot;) para reproducirse en el reproductor integrado.
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Primary Student Controls Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-[#171717] border border-neutral-800">
-              <div className="flex flex-wrap items-center gap-3">
+            {/* Primary Student Controls Bar (Mobile Grid + Desktop Flex) */}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 p-3.5 sm:p-4 rounded-2xl bg-[#171717] border border-neutral-800">
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={() => onToggleComplete(video.id)}
-                  className={`px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-bold flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap ${
+                  className={`col-span-2 sm:col-span-1 px-4 sm:px-5 py-2.5 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap ${
                     isCompleted
                       ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
                       : 'bg-[#E50914] hover:bg-[#c40811] text-white'
                   }`}
                 >
-                  <CheckCircle2 className="w-4 h-4" />
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
                   <span>{isCompleted ? 'Clase Concluida' : 'Marcar como Concluida'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => onToggleFavorite(video.id)}
-                  className={`px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-medium border flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap ${
+                  className={`px-3.5 sm:px-4 py-2.5 min-h-[44px] rounded-xl text-xs sm:text-sm font-medium border flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap ${
                     isFavorite
                       ? 'bg-neutral-800 border-[#E50914] text-white'
                       : 'bg-[#090909] border-neutral-800 text-neutral-300 hover:text-white'
                   }`}
                 >
-                  <Bookmark className={`w-4 h-4 ${isFavorite ? 'fill-[#E50914] text-[#E50914]' : ''}`} />
+                  <Bookmark className={`w-4 h-4 shrink-0 ${isFavorite ? 'fill-[#E50914] text-[#E50914]' : ''}`} />
                   <span>{isFavorite ? 'En Favoritos' : 'Favorito'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleFullScreen}
-                  className="px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-medium bg-[#090909] hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
+                  className="px-3.5 sm:px-4 py-2.5 min-h-[44px] rounded-xl text-xs sm:text-sm font-medium bg-[#090909] hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  <Maximize2 className="w-4 h-4" />
+                  <Maximize2 className="w-4 h-4 shrink-0" />
                   <span>Pantalla Completa</span>
                 </button>
               </div>
@@ -164,10 +167,10 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 <button
                   type="button"
                   onClick={onNextVideo}
-                  className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold bg-white hover:bg-neutral-200 text-black flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
+                  className="w-full sm:w-auto px-5 py-2.5 min-h-[44px] rounded-xl text-xs sm:text-sm font-semibold bg-white hover:bg-neutral-200 text-black flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
                 >
                   <span>Siguiente Clase</span>
-                  <SkipForward className="w-4 h-4" />
+                  <SkipForward className="w-4 h-4 shrink-0" />
                 </button>
               )}
             </div>

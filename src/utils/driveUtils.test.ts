@@ -8,7 +8,11 @@ import {
   canAccessBonus,
   canAccessVipClasses,
   filterNonDuplicateDriveFiles,
-} from './driveUtils';
+} from './driveUtils.ts';
+import {
+  getSpanishBonusManual,
+  generateSpanishBonusPdfBytes,
+} from './spanishBonusPdf.ts';
 
 test('extractDriveFileId parses standard Google Drive URLs and raw IDs', () => {
   assert.equal(
@@ -90,3 +94,29 @@ test('filterNonDuplicateDriveFiles removes already synced files and non-videos',
   assert.equal(result.skippedDuplicates.length, 1);
   assert.equal(result.skippedDuplicates[0].id, 'file_101');
 });
+
+test('generateSpanishBonusPdfBytes creates valid multi-page Spanish PDFs for all 5 bonuses', () => {
+  const bonusIds = ['bono-01', 'bono-02', 'bono-03', 'bono-04', 'bono-05'];
+  for (const id of bonusIds) {
+    const manual = getSpanishBonusManual({
+      id,
+      code: id.toUpperCase(),
+      title: '',
+      description: '',
+    });
+    assert.equal(manual.chapters.length, 4);
+    assert.ok(manual.introduction.length > 50);
+
+    const pdfBytes = generateSpanishBonusPdfBytes({
+      id,
+      code: manual.code,
+      title: manual.title,
+      description: manual.subtitle,
+    });
+    const pdfText = new TextDecoder('latin1').decode(pdfBytes);
+    assert.ok(pdfText.startsWith('%PDF-1.4'));
+    assert.ok(pdfText.includes('/Count 5'));
+    assert.ok(pdfText.trim().endsWith('%%EOF'));
+  }
+});
+
