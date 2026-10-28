@@ -4,16 +4,17 @@ import {
   Dumbbell,
   Gift,
   BarChart3,
-  User,
   LayoutDashboard,
   Video,
   Layers,
   FileText,
-  Users,
   Settings,
   Shield,
+  Lock,
   Link2,
   Check,
+  LogOut,
+  X,
 } from 'lucide-react';
 import {
   AdminTab,
@@ -29,19 +30,11 @@ import { AdminArea } from './components/AdminArea';
 import { VideoPlayerModal } from './components/VideoPlayerModal';
 
 const SESSION_TOKEN_KEY = 'thai_elite_session_token';
-
-function getInitialRoleFromUrl(): 'student' | 'admin' {
-  if (typeof window === 'undefined') return 'student';
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('role') === 'admin' || params.get('admin') === '1') {
-    return 'admin';
-  }
-  return 'student';
-}
+const ADMIN_AUTH_KEY = 'thai_elite_admin_unlocked';
+const ADMIN_EMAIL = 'pedrinho.pedro248@gmail.com';
 
 export default function App() {
-  const initialRole = getInitialRoleFromUrl();
-  const initialDirect = getDirectBootstrapPayload(initialRole);
+  const initialDirect = getDirectBootstrapPayload('student');
 
   const [token, setToken] = useState<string>(() => {
     const saved = localStorage.getItem(SESSION_TOKEN_KEY);
@@ -55,10 +48,19 @@ export default function App() {
   const [data, setData] = useState<BootstrapPayload>(() => initialDirect.payload);
   const [copiedStudentLink, setCopiedStudentLink] = useState(false);
 
+  // Admin Maintenance Unlock State (ONLY Admin has a single login to maintain the platform)
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(() => {
+    return localStorage.getItem(ADMIN_AUTH_KEY) === '1';
+  });
+  const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
+  const [adminEmailInput, setAdminEmailInput] = useState(ADMIN_EMAIL);
+  const [adminPassInput, setAdminPassInput] = useState('');
+  const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
+
   // Environment & Tab Navigation State
-  const [environment, setEnvironment] = useState<'student' | 'admin'>(initialRole);
+  const [environment, setEnvironment] = useState<'student' | 'admin'>('student');
   const [studentTab, setStudentTab] = useState<StudentTab>('inicio');
-  const [adminTab, setAdminTab] = useState<AdminTab>('dashboard');
+  const [adminTab, setAdminTab] = useState<AdminTab>('videos');
 
   // Active Video in Internal Player Modal
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
@@ -105,17 +107,61 @@ export default function App() {
     fetchBootstrap(token, environment);
   }, [token, environment, fetchBootstrap]);
 
-  const handleSwitchEnvironment = (nextEnv: 'student' | 'admin') => {
-    const direct = getDirectBootstrapPayload(nextEnv);
+  const handleOpenAdminAccess = () => {
+    if (isAdminUnlocked) {
+      const nextEnv = environment === 'admin' ? 'student' : 'admin';
+      const direct = getDirectBootstrapPayload(nextEnv);
+      localStorage.setItem(SESSION_TOKEN_KEY, direct.token);
+      setToken(direct.token);
+      setData(direct.payload);
+      setEnvironment(nextEnv);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setAdminLoginError(null);
+      setAdminPassInput('');
+      setShowAdminLoginModal(true);
+    }
+  };
+
+  const handleAdminLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminLoginError(null);
+    const normalizedEmail = adminEmailInput.trim().toLowerCase();
+    const pass = adminPassInput.trim();
+
+    if (
+      (normalizedEmail === ADMIN_EMAIL || normalizedEmail === 'admin@thaielite.mx') &&
+      pass.length >= 4
+    ) {
+      localStorage.setItem(ADMIN_AUTH_KEY, '1');
+      setIsAdminUnlocked(true);
+      setShowAdminLoginModal(false);
+      const direct = getDirectBootstrapPayload('admin');
+      localStorage.setItem(SESSION_TOKEN_KEY, direct.token);
+      setToken(direct.token);
+      setData(direct.payload);
+      setEnvironment('admin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setAdminLoginError(
+        'Ingresa el correo de administrador (pedrinho.pedro248@gmail.com) y tu clave de mantenimiento (mínimo 4 caracteres).'
+      );
+    }
+  };
+
+  const handleLockAdmin = () => {
+    localStorage.removeItem(ADMIN_AUTH_KEY);
+    setIsAdminUnlocked(false);
+    const direct = getDirectBootstrapPayload('student');
     localStorage.setItem(SESSION_TOKEN_KEY, direct.token);
     setToken(direct.token);
     setData(direct.payload);
-    setEnvironment(nextEnv);
+    setEnvironment('student');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCopyStudentLink = async () => {
-    const studentUrl = `${window.location.origin}/?acceso=alumno`;
+    const studentUrl = `${window.location.origin}/`;
     try {
       await navigator.clipboard.writeText(studentUrl);
     } catch {
@@ -224,7 +270,7 @@ export default function App() {
     adminData,
   } = data;
 
-  const currentEnv = environment;
+  const currentEnv = isAdminUnlocked ? environment : 'student';
 
   const progressStats = calculateProgressStats(
     progress.completedVideoIds || [],
@@ -263,21 +309,21 @@ export default function App() {
 
   const nextVideoItem = getNextVideo();
 
+  // Student view shows ONLY Videos & Bonuses (no account creation or profile tab)
   const studentNavItems: { id: StudentTab; label: string; icon: React.ReactNode }[] = [
     { id: 'inicio', label: 'Inicio', icon: <Home className="w-5 h-5" /> },
-    { id: 'entrenamientos', label: 'Entrenamientos', icon: <Dumbbell className="w-5 h-5" /> },
-    { id: 'bonos', label: 'Bonos', icon: <Gift className="w-5 h-5" /> },
-    { id: 'progreso', label: 'Mi progreso', icon: <BarChart3 className="w-5 h-5" /> },
-    { id: 'perfil', label: 'Perfil', icon: <User className="w-5 h-5" /> },
+    { id: 'entrenamientos', label: 'Videos y Clases', icon: <Dumbbell className="w-5 h-5" /> },
+    { id: 'bonos', label: 'Bonos PDF', icon: <Gift className="w-5 h-5" /> },
+    { id: 'progreso', label: 'Mi Progreso', icon: <BarChart3 className="w-5 h-5" /> },
   ];
 
+  // Admin maintenance items (Videos, Módulos, Bonos, Configuración)
   const adminNavItems: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
+    { id: 'dashboard', label: 'Resumen', icon: <LayoutDashboard className="w-5 h-5" /> },
     { id: 'videos', label: 'Videos', icon: <Video className="w-5 h-5" /> },
     { id: 'modulos', label: 'Módulos', icon: <Layers className="w-5 h-5" /> },
-    { id: 'bonos', label: 'Bonos', icon: <FileText className="w-5 h-5" /> },
-    { id: 'alumnos', label: 'Alumnos', icon: <Users className="w-5 h-5" /> },
-    { id: 'configuracion', label: 'Configuración', icon: <Settings className="w-5 h-5" /> },
+    { id: 'bonos', label: 'Bonos PDF', icon: <FileText className="w-5 h-5" /> },
+    { id: 'configuracion', label: 'Ajustes', icon: <Settings className="w-5 h-5" /> },
   ];
 
   return (
@@ -301,56 +347,58 @@ export default function App() {
               THAI ELITE <span className="text-[#E50914]">MÉXICO</span>
             </span>
             <span className="block text-[11px] text-neutral-400 tracking-wide mt-1 truncate">
-              Acceso Directo • Sin Cuenta
+              Videos y Bonos Oficiales
             </span>
           </div>
         </div>
 
-        {/* Direct Environment Switcher */}
-        <div className="p-4 border-b border-neutral-800 space-y-2.5">
-          <div className="grid grid-cols-2 gap-1 p-1 bg-[#090909] rounded-xl border border-neutral-800">
+        {/* Admin Mode Controls (Only shown when Admin is logged in) */}
+        {isAdminUnlocked && (
+          <div className="p-4 border-b border-neutral-800 space-y-2.5">
+            <div className="grid grid-cols-2 gap-1 p-1 bg-[#090909] rounded-xl border border-neutral-800">
+              <button
+                type="button"
+                onClick={() => setEnvironment('student')}
+                className={`py-2 px-2 text-xs font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
+                  currentEnv === 'student'
+                    ? 'bg-[#E50914] text-white'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                Vista Videos
+              </button>
+              <button
+                type="button"
+                onClick={() => setEnvironment('admin')}
+                className={`py-2 px-2 text-xs font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
+                  currentEnv === 'admin'
+                    ? 'bg-[#E50914] text-white'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                Mantener Admin
+              </button>
+            </div>
+
             <button
               type="button"
-              onClick={() => handleSwitchEnvironment('student')}
-              className={`py-2 px-2 text-xs font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
-                currentEnv === 'student'
-                  ? 'bg-[#E50914] text-white'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
+              onClick={handleCopyStudentLink}
+              className="w-full py-2 px-3 rounded-xl bg-[#141414] hover:bg-neutral-800 border border-neutral-800 text-[11px] font-bold text-neutral-200 flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
-              Área Alumno
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSwitchEnvironment('admin')}
-              className={`py-2 px-2 text-xs font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
-                currentEnv === 'admin'
-                  ? 'bg-[#E50914] text-white'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              Panel Admin
+              {copiedStudentLink ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="text-emerald-400">¡Link Copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Link2 className="w-3.5 h-3.5 text-[#E50914] shrink-0" />
+                  <span>Copiar Link de Acceso</span>
+                </>
+              )}
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={handleCopyStudentLink}
-            className="w-full py-2 px-3 rounded-xl bg-[#141414] hover:bg-neutral-800 border border-neutral-800 text-[11px] font-bold text-neutral-200 flex items-center justify-center gap-2 transition-colors cursor-pointer"
-          >
-            {copiedStudentLink ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="text-emerald-400">¡Link de Alumno Copiado!</span>
-              </>
-            ) : (
-              <>
-                <Link2 className="w-3.5 h-3.5 text-[#E50914] shrink-0" />
-                <span>Copiar Link de Alumno</span>
-              </>
-            )}
-          </button>
-        </div>
+        )}
 
         {/* Navigation Links */}
         <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto" aria-label="Menú principal">
@@ -393,29 +441,14 @@ export default function App() {
               })}
         </nav>
 
-        {/* User Footer Info */}
+        {/* Progress & Discreet Admin Login Footer */}
         <div className="p-4 border-t border-neutral-800/80 space-y-3 bg-[#090909]/50">
-          <div className="px-2 space-y-2.5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#E50914] shrink-0 shadow-[0_0_12px_rgba(229,9,20,0.45)] bg-[#141414]">
-                <img
-                  src="/assets/modules/mod01.jpg"
-                  alt={user.name}
-                  className="w-full h-full object-cover scale-150"
-                  style={{ objectPosition: '84% 24%' }}
-                />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-bold text-white truncate">{user.name}</div>
-                <div className="flex items-center justify-between text-xs text-neutral-400">
-                  <span className="truncate">
-                    {currentEnv === 'admin' ? 'Administrador Oficial' : 'Acceso Directo VIP'}
-                  </span>
-                  <span className="tabular-nums text-white font-semibold">
-                    {progressStats.percentage}%
-                  </span>
-                </div>
-              </div>
+          <div className="px-2 space-y-2">
+            <div className="flex items-center justify-between text-xs text-neutral-400">
+              <span>Avance de Clases</span>
+              <span className="tabular-nums text-white font-semibold">
+                {progressStats.percentage}%
+              </span>
             </div>
             <div className="w-full h-1.5 rounded-full bg-neutral-800 overflow-hidden">
               <div
@@ -424,6 +457,26 @@ export default function App() {
               />
             </div>
           </div>
+
+          {isAdminUnlocked ? (
+            <button
+              type="button"
+              onClick={handleLockAdmin}
+              className="w-full px-3 py-2 min-h-[38px] rounded-xl bg-[#171717] hover:bg-neutral-800 border border-neutral-800 text-xs font-semibold text-neutral-300 hover:text-white flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5 text-[#E50914]" />
+              <span>Salir de Modo Admin</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleOpenAdminAccess}
+              className="w-full px-3 py-2 min-h-[38px] rounded-xl bg-transparent hover:bg-neutral-900 border border-neutral-800/70 text-[11px] font-medium text-neutral-500 hover:text-neutral-300 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Lock className="w-3 h-3" />
+              <span>Acceso Admin (Mantener)</span>
+            </button>
+          )}
         </div>
       </aside>
 
@@ -438,7 +491,7 @@ export default function App() {
             onClick={(e) => {
               e.preventDefault();
               if (currentEnv === 'student') setStudentTab('inicio');
-              else setAdminTab('dashboard');
+              else setAdminTab('videos');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className="text-base sm:text-lg font-extrabold tracking-wider text-white uppercase whitespace-nowrap shrink-0 flex items-center gap-2"
@@ -455,8 +508,8 @@ export default function App() {
           <div className="hidden md:flex items-center gap-6 text-xs font-medium text-neutral-400">
             <span className="whitespace-nowrap shrink-0">
               {currentEnv === 'admin'
-                ? 'Ambiente: Panel Administrativo'
-                : 'Acceso Directo del Alumno • Plan VIP Activo'}
+                ? 'Modo Mantenimiento (Administrador)'
+                : '500 Entrenamientos de Muay Thai y 5 Bonos PDF'}
             </span>
             <span className="whitespace-nowrap shrink-0 tabular-nums">
               Avance: {progressStats.percentage}%
@@ -466,34 +519,49 @@ export default function App() {
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={handleCopyStudentLink}
-              className="px-2.5 sm:px-3.5 py-1.5 min-h-[36px] rounded-lg bg-[#141414] hover:bg-neutral-800 border border-neutral-700 text-[11px] sm:text-xs font-bold text-white flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
-              title="Copiar link de acceso directo del alumno (sin crear cuenta)"
+              onClick={() => {
+                setEnvironment('student');
+                setStudentTab('bonos');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="px-2.5 sm:px-3.5 py-1.5 min-h-[36px] rounded-lg bg-[#141414] hover:bg-neutral-800 border border-neutral-800 text-[11px] sm:text-xs font-bold text-white flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
             >
-              {copiedStudentLink ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="text-emerald-400">¡Link Copiado!</span>
-                </>
-              ) : (
-                <>
-                  <Link2 className="w-3.5 h-3.5 text-[#E50914] shrink-0" />
-                  <span className="hidden sm:inline">Copiar Link Alumno</span>
-                  <span className="sm:hidden">Link Alumno</span>
-                </>
-              )}
+              <Gift className="w-3.5 h-3.5 text-[#E50914] shrink-0" />
+              <span>Bonos PDF</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() =>
-                handleSwitchEnvironment(currentEnv === 'admin' ? 'student' : 'admin')
-              }
-              className="px-2.5 sm:px-3.5 py-1.5 min-h-[36px] rounded-lg bg-[#171717] hover:bg-neutral-800 border border-neutral-800 text-[11px] sm:text-xs font-bold text-neutral-200 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
-            >
-              <Shield className="w-3.5 h-3.5 text-[#E50914]" />
-              <span>{currentEnv === 'admin' ? 'Área Alumno' : 'Admin'}</span>
-            </button>
+            {isAdminUnlocked ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEnvironment(currentEnv === 'admin' ? 'student' : 'admin')
+                  }
+                  className="px-2.5 sm:px-3.5 py-1.5 min-h-[36px] rounded-lg bg-[#E50914] hover:bg-[#c40811] text-[11px] sm:text-xs font-bold text-white flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>{currentEnv === 'admin' ? 'Ver Videos' : 'Panel Admin'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLockAdmin}
+                  title="Salir del modo administrador"
+                  className="p-2 min-h-[36px] rounded-lg bg-[#171717] hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={handleOpenAdminAccess}
+                title="Acceso exclusivo de administrador para mantener videos y bonos"
+                className="px-2.5 py-1.5 min-h-[36px] rounded-lg bg-[#141414] hover:bg-neutral-800 border border-neutral-800/80 text-[11px] font-semibold text-neutral-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              >
+                <Lock className="w-3 h-3 text-neutral-400" />
+                <span>Admin</span>
+              </button>
+            )}
           </div>
         </header>
 
@@ -501,9 +569,9 @@ export default function App() {
         <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-8 pt-4 sm:pt-6">
           {currentEnv === 'student' ? (
             <StudentArea
-              activeTab={studentTab}
+              activeTab={studentTab === 'perfil' ? 'inicio' : studentTab}
               onChangeTab={(tab) => {
-                setStudentTab(tab);
+                setStudentTab(tab === 'perfil' ? 'inicio' : tab);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               user={user}
@@ -552,7 +620,7 @@ export default function App() {
         className="lg:hidden fixed bottom-0 left-0 right-0 z-40 h-16 bg-[#0d0d0d]/95 backdrop-blur-md border-t border-neutral-800 px-1 shadow-[0_-10px_25px_rgba(0,0,0,0.85)]"
       >
         {currentEnv === 'student' ? (
-          <div className="grid grid-cols-5 items-center h-full">
+          <div className="grid grid-cols-4 items-center h-full">
             {studentNavItems.map((item) => {
               const active = studentTab === item.id;
               return (
@@ -568,18 +636,18 @@ export default function App() {
                   }`}
                 >
                   {active && (
-                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-7 h-0.5 rounded-full bg-[#E50914]" />
+                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-[#E50914]" />
                   )}
                   {item.icon}
                   <span className="text-[10px] font-semibold tracking-tight mt-0.5 w-full text-center px-0.5 truncate">
-                    {item.label === 'Mi progreso' ? 'Progreso' : item.label}
+                    {item.label}
                   </span>
                 </button>
               );
             })}
           </div>
         ) : (
-          <div className="grid grid-cols-6 items-center h-full">
+          <div className="grid grid-cols-5 items-center h-full">
             {adminNavItems.map((item) => {
               const active = adminTab === item.id;
               return (
@@ -598,7 +666,7 @@ export default function App() {
                     <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-[#E50914]" />
                   )}
                   {item.icon}
-                  <span className="text-[10px] font-semibold tracking-tight mt-0.5 truncate max-w-[56px]">
+                  <span className="text-[10px] font-semibold tracking-tight mt-0.5 truncate max-w-[64px]">
                     {item.label}
                   </span>
                 </button>
@@ -607,6 +675,95 @@ export default function App() {
           </div>
         )}
       </nav>
+
+      {/* ==========================================
+          SINGLE ADMIN LOGIN MODAL (ONLY FOR MAINTENANCE)
+      ========================================== */}
+      {showAdminLoginModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Acceso de Administrador"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-[#141414] border border-neutral-800 p-6 space-y-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-[#E50914]">
+                  Mantenimiento de Plataforma
+                </span>
+                <h2
+                  className="text-2xl font-extrabold text-white uppercase mt-0.5"
+                  style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+                >
+                  ACCESO EXCLUSIVO ADMIN
+                </h2>
+                <p className="text-xs text-neutral-400 mt-1">
+                  Los alumnos acceden directo a los videos y bonos sin cuenta. Este login es únicamente para mantener la plataforma.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAdminLoginModal(false)}
+                aria-label="Cerrar"
+                className="p-2 rounded-xl bg-[#1f1f1f] hover:bg-neutral-800 text-neutral-300 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {adminLoginError && (
+              <div className="p-3 rounded-xl bg-[#E50914]/15 border border-[#E50914] text-xs text-red-200">
+                {adminLoginError}
+              </div>
+            )}
+
+            <form onSubmit={handleAdminLoginSubmit} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="admin-email"
+                  className="block text-xs font-semibold text-neutral-300 mb-1.5"
+                >
+                  Correo del Administrador
+                </label>
+                <input
+                  id="admin-email"
+                  type="email"
+                  required
+                  value={adminEmailInput}
+                  onChange={(e) => setAdminEmailInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#090909] border border-neutral-800 text-sm text-white focus:outline-none focus:border-[#E50914]"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="admin-pass"
+                  className="block text-xs font-semibold text-neutral-300 mb-1.5"
+                >
+                  Contraseña de Mantenimiento
+                </label>
+                <input
+                  id="admin-pass"
+                  type="password"
+                  required
+                  placeholder="Ingresa tu contraseña de admin"
+                  value={adminPassInput}
+                  onChange={(e) => setAdminPassInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#090909] border border-neutral-800 text-sm text-white focus:outline-none focus:border-[#E50914]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 px-4 min-h-[46px] rounded-xl bg-[#E50914] hover:bg-[#c40811] text-white text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                Entrar al Panel de Mantenimiento
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ==========================================
           INTERNAL GOOGLE DRIVE VIDEO PLAYER MODAL
