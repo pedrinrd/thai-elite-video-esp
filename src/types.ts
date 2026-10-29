@@ -92,5 +92,6 @@ export interface BootstrapPayload {
   } | null;
 }
 
-export type StudentTab = 'inicio' | 'entrenamientos' | 'bonos' | 'progreso' | 'perfil';
+export type StudentTab = 'inicio' | 'entrenamientos' | 'bonos' | 'progreso' | 'pago' | 'perfil';
 export type AdminTab = 'dashboard' | 'videos' | 'modulos' | 'bonos' | 'alumnos' | 'configuracion';
+

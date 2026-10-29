@@ -16,6 +16,9 @@ import {
   BookOpen,
   X,
   FileText,
+  CreditCard,
+  Heart,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   BonusItem,
@@ -518,6 +521,59 @@ export const StudentArea: React.FC<StudentAreaProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Non-Aggressive Payment & Community Contribution Banner on Inicio */}
+        <section className="rounded-2xl bg-gradient-to-br from-[#161616] via-[#121212] to-[#1a0d0e] border border-neutral-800/90 p-5 sm:p-7 shadow-lg">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="space-y-2 max-w-2xl">
+              <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#E50914]">
+                <Heart className="w-3.5 h-3.5 fill-[#E50914]" />
+                <span>Inscripción Pendiente o Apoyo para Mantener Thai Elite</span>
+              </div>
+              <h2
+                className="text-2xl sm:text-3xl font-extrabold text-white uppercase tracking-wide"
+                style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+              >
+                ¿Aún no has realizado tu pago o deseas contribuir a la plataforma?
+              </h2>
+              <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                Dejamos el acceso directo sin registro para facilitar tu entrenamiento. Si aún tienes pendiente tu pago de acceso o quieres apoyar para mantener los servidores, los 587 videos y los bonos activos, puedes elegir el <strong className="text-white">Plan Completo de $219 MXN</strong> o la opción accesible de <strong className="text-white">$100 MXN</strong>.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+              <a
+                href="https://xpag.global/pay/mJLWrn52"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-3 min-h-[46px] rounded-xl bg-[#E50914] hover:bg-[#c40811] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors whitespace-nowrap shadow-[0_8px_20px_-6px_rgba(229,9,20,0.6)]"
+              >
+                <CreditCard className="w-4 h-4 shrink-0" />
+                <span>Plan Completo · $219 MXN</span>
+              </a>
+              <a
+                href="https://xpag.global/pay/3toN68D3"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-3 min-h-[46px] rounded-xl bg-[#090909] hover:bg-neutral-800 border border-neutral-700 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors whitespace-nowrap"
+              >
+                <Heart className="w-4 h-4 text-[#E50914] shrink-0" />
+                <span>Plan / Apoyo · $100 MXN</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  onChangeTab('pago');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="px-4 py-3 min-h-[46px] rounded-xl bg-transparent hover:bg-neutral-800/70 text-neutral-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
+              >
+                <span>Ver detalles</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
     );
   }
@@ -1271,7 +1327,209 @@ export const StudentArea: React.FC<StudentAreaProps> = ({
   }
 
   // ==========================================
-  // TAB 5: PERFIL + CLASES EN VIVO VIP
+  // TAB 5: PAGO PENDIENTE Y CONTRIBUCIÓN (219 MXN / 100 MXN)
+  // ==========================================
+  if (activeTab === 'pago') {
+    return (
+      <div className="space-y-8 pb-24 lg:pb-12">
+        {/* Top Header */}
+        <div className="max-w-3xl space-y-2">
+          <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#E50914]">
+            <Heart className="w-3.5 h-3.5 fill-[#E50914]" />
+            <span>Acceso Abierto Basado en Confianza · Thai Elite México</span>
+          </div>
+          <h1
+            className="text-3xl sm:text-5xl font-extrabold text-white uppercase tracking-tight"
+            style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+          >
+            PAGO DE INSCRIPCIÓN Y CONTRIBUCIÓN DE MANTENIMIENTO
+          </h1>
+          <p className="text-sm sm:text-base text-neutral-300 leading-relaxed">
+            En <strong className="text-white">Thai Elite México</strong> eliminamos los formularios y contraseñas para que puedas entrar directamente a tus entrenamientos y bonos sin complicaciones. Si aún no has realizado tu pago de inscripción, o si deseas contribuir para ayudarnos a mantener la plataforma activa y sin anuncios, elige la opción que mejor se adapte a ti:
+          </p>
+        </div>
+
+        {/* Two Plan Cards: $219 MXN and $100 MXN */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+          {/* Card 1: Plan Completo $219 MXN */}
+          <div className="relative rounded-2xl bg-gradient-to-b from-[#1a1112] to-[#141414] border-2 border-[#E50914] p-6 sm:p-8 flex flex-col justify-between shadow-[0_20px_50px_-15px_rgba(229,9,20,0.35)]">
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="px-3 py-1 rounded-md bg-[#E50914] text-white text-[11px] font-bold uppercase tracking-wider">
+                  Plan Oficial Completo · Más Elegido
+                </span>
+                <span className="text-xs text-neutral-400 font-medium">Pago Único</span>
+              </div>
+
+              <div>
+                <h2
+                  className="text-2xl sm:text-3xl font-extrabold text-white uppercase"
+                  style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+                >
+                  PLAN COMPLETO THAI ELITE + 5 BONOS PDF
+                </h2>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span
+                    className="text-4xl sm:text-5xl font-extrabold text-white tabular-nums"
+                    style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+                  >
+                    $219 MXN
+                  </span>
+                  <span className="text-xs text-neutral-400">
+                    pesos mexicanos · sin mensualidades
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                Ideal si entraste a la plataforma y aún tienes pendiente liquidar tu inscripción completa, o si deseas respaldar al 100% el proyecto Thai Elite México para mantener todos los módulos y manuales disponibles.
+              </p>
+
+              <ul className="space-y-2.5 pt-2 border-t border-neutral-800/80 text-xs sm:text-sm text-neutral-200">
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#E50914] shrink-0 mt-0.5" />
+                  <span>
+                    Acceso ilimitado a los <strong>10 Módulos y 587 Clases de Muay Thai</strong> en alta definición.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#E50914] shrink-0 mt-0.5" />
+                  <span>
+                    Descarga directa de los <strong>5 Bonos Exclusivos en PDF en Español</strong> (Combinaciones, Acondicionamiento, Defensa, Fundamentos y Recuperación).
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#E50914] shrink-0 mt-0.5" />
+                  <span>
+                    Ayudas directamente a cubrir el almacenamiento en la nube y nuevas actualizaciones para toda la comunidad.
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="pt-6 mt-6 border-t border-neutral-800/80 space-y-2.5">
+              <a
+                href="https://xpag.global/pay/mJLWrn52"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3.5 px-6 min-h-[48px] rounded-xl bg-[#E50914] hover:bg-[#c40811] text-white font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 transition-colors shadow-[0_10px_25px_-6px_rgba(229,9,20,0.65)]"
+              >
+                <CreditCard className="w-4 h-4 shrink-0" />
+                <span>Pagar Plan Completo · $219 MXN</span>
+                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+              </a>
+              <p className="text-[11px] text-center text-neutral-400">
+                Pago rápido y 100% seguro a través de Xpag Global
+              </p>
+            </div>
+          </div>
+
+          {/* Card 2: Plan Esencial / Contribución $100 MXN */}
+          <div className="rounded-2xl bg-[#141414] border border-neutral-800 p-6 sm:p-8 flex flex-col justify-between shadow-lg">
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="px-3 py-1 rounded-md bg-neutral-800 text-neutral-200 text-[11px] font-bold uppercase tracking-wider">
+                  Plan Accesible / Aporte de Mantenimiento
+                </span>
+                <span className="text-xs text-neutral-400 font-medium">Aportación Única</span>
+              </div>
+
+              <div>
+                <h2
+                  className="text-2xl sm:text-3xl font-extrabold text-white uppercase"
+                  style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+                >
+                  PLAN ESENCIAL O CONTRIBUCIÓN DE $100 MXN
+                </h2>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span
+                    className="text-4xl sm:text-5xl font-extrabold text-white tabular-nums"
+                    style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+                  >
+                    $100 MXN
+                  </span>
+                  <span className="text-xs text-neutral-400">
+                    pesos mexicanos · apoyo solidario
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                Pensado para quienes buscan una opción económica de <strong className="text-white">$100 MXN</strong> para regularizar su acceso o desean realizar una contribución voluntaria para ayudar a mantener activo el servidor de Thai Elite México.
+              </p>
+
+              <ul className="space-y-2.5 pt-2 border-t border-neutral-800/80 text-xs sm:text-sm text-neutral-200">
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#E50914] shrink-0 mt-0.5" />
+                  <span>
+                    Opción accesible de <strong>$100 MXN</strong> para cubrir tu acceso base de estudiante.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#E50914] shrink-0 mt-0.5" />
+                  <span>
+                    Contribuyes directamente al mantenimiento de los servidores de video y soporte técnico de la plataforma.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#E50914] shrink-0 mt-0.5" />
+                  <span>
+                    Mantiene el acceso directo sin publicidad ni bloqueos para ti y tus compañeros de entrenamiento.
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="pt-6 mt-6 border-t border-neutral-800/80 space-y-2.5">
+              <a
+                href="https://xpag.global/pay/3toN68D3"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3.5 px-6 min-h-[48px] rounded-xl bg-white hover:bg-neutral-200 text-black font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 transition-colors"
+              >
+                <Heart className="w-4 h-4 text-[#E50914] fill-[#E50914] shrink-0" />
+                <span>Pagar / Contribuir · $100 MXN</span>
+                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+              </a>
+              <p className="text-[11px] text-center text-neutral-400">
+                Enlace oficial de pago y contribución ($100 MXN)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Friendly Non-Aggressive Note */}
+        <div className="rounded-2xl bg-[#121212] border border-neutral-800/90 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-[#E50914]/15 border border-[#E50914]/30 flex items-center justify-center shrink-0 mt-0.5">
+              <ShieldCheck className="w-5 h-5 text-[#E50914]" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-white">
+                ¿Ya realizaste tu pago anteriormente?
+              </h3>
+              <p className="text-xs text-neutral-400 leading-relaxed max-w-2xl">
+                Si ya hiciste tu pago al inscribirte, ¡muchas gracias por tu confianza! No necesitas volver a pagar: todas tus clases y bonos en PDF están desbloqueados para que entrenes cuando quieras.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              onChangeTab('entrenamientos');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className="px-4 py-2.5 min-h-[42px] rounded-xl bg-[#1a1a1a] hover:bg-neutral-800 border border-neutral-700 text-xs font-bold text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
+          >
+            Ir a las Clases
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // TAB 6: PERFIL + CLASES EN VIVO VIP
   // ==========================================
   return (
     <div className="space-y-8 pb-24 lg:pb-12">

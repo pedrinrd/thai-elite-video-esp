@@ -15,6 +15,7 @@ import {
   Check,
   LogOut,
   X,
+  Heart,
 } from 'lucide-react';
 import {
   AdminTab,
@@ -309,12 +310,13 @@ export default function App() {
 
   const nextVideoItem = getNextVideo();
 
-  // Student view shows ONLY Videos & Bonuses (no account creation or profile tab)
+  // Student view shows Videos, Bonuses, Progress, and the non-aggressive Payment / Contribution tab
   const studentNavItems: { id: StudentTab; label: string; icon: React.ReactNode }[] = [
     { id: 'inicio', label: 'Inicio', icon: <Home className="w-5 h-5" /> },
     { id: 'entrenamientos', label: 'Videos y Clases', icon: <Dumbbell className="w-5 h-5" /> },
     { id: 'bonos', label: 'Bonos PDF', icon: <Gift className="w-5 h-5" /> },
     { id: 'progreso', label: 'Mi Progreso', icon: <BarChart3 className="w-5 h-5" /> },
+    { id: 'pago', label: 'Pago / Apoyar', icon: <Heart className="w-5 h-5" /> },
   ];
 
   // Admin maintenance items (Videos, Módulos, Bonos, Configuración)
@@ -521,10 +523,33 @@ export default function App() {
               type="button"
               onClick={() => {
                 setEnvironment('student');
+                setStudentTab('pago');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className={`px-2.5 sm:px-3.5 py-1.5 min-h-[36px] rounded-lg border text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                studentTab === 'pago' && currentEnv === 'student'
+                  ? 'bg-[#E50914] border-[#E50914] text-white'
+                  : 'bg-[#141414] hover:bg-neutral-800 border-neutral-800 text-white'
+              }`}
+            >
+              <Heart
+                className={`w-3.5 h-3.5 shrink-0 ${
+                  studentTab === 'pago' && currentEnv === 'student'
+                    ? 'text-white fill-white'
+                    : 'text-[#E50914]'
+                }`}
+              />
+              <span>Pago / Apoyar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEnvironment('student');
                 setStudentTab('bonos');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="px-2.5 sm:px-3.5 py-1.5 min-h-[36px] rounded-lg bg-[#141414] hover:bg-neutral-800 border border-neutral-800 text-[11px] sm:text-xs font-bold text-white flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              className="hidden sm:flex px-3.5 py-1.5 min-h-[36px] rounded-lg bg-[#141414] hover:bg-neutral-800 border border-neutral-800 text-xs font-bold text-white items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
             >
               <Gift className="w-3.5 h-3.5 text-[#E50914] shrink-0" />
               <span>Bonos PDF</span>
@@ -620,9 +645,17 @@ export default function App() {
         className="lg:hidden fixed bottom-0 left-0 right-0 z-40 h-16 bg-[#0d0d0d]/95 backdrop-blur-md border-t border-neutral-800 px-1 shadow-[0_-10px_25px_rgba(0,0,0,0.85)]"
       >
         {currentEnv === 'student' ? (
-          <div className="grid grid-cols-4 items-center h-full">
+          <div className="grid grid-cols-5 items-center h-full">
             {studentNavItems.map((item) => {
               const active = studentTab === item.id;
+              const mobileLabel =
+                item.id === 'entrenamientos'
+                  ? 'Videos'
+                  : item.id === 'progreso'
+                  ? 'Progreso'
+                  : item.id === 'pago'
+                  ? 'Pago/Apoyo'
+                  : item.label;
               return (
                 <button
                   key={item.id}
@@ -636,11 +669,11 @@ export default function App() {
                   }`}
                 >
                   {active && (
-                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-[#E50914]" />
+                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-7 h-0.5 rounded-full bg-[#E50914]" />
                   )}
                   {item.icon}
                   <span className="text-[10px] font-semibold tracking-tight mt-0.5 w-full text-center px-0.5 truncate">
-                    {item.label}
+                    {mobileLabel}
                   </span>
                 </button>
               );
